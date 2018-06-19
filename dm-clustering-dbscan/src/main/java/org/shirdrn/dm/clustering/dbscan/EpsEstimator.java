@@ -1,6 +1,12 @@
 package org.shirdrn.dm.clustering.dbscan;
 
+import java.io.BufferedWriter;
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStreamWriter;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Iterator;
@@ -14,9 +20,11 @@ import java.util.concurrent.LinkedBlockingQueue;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.shirdrn.dm.clustering.common.ClusteringResult;
 import org.shirdrn.dm.clustering.common.DistanceCache;
 import org.shirdrn.dm.clustering.common.NamedThreadFactory;
 import org.shirdrn.dm.clustering.common.Point2D;
+import org.shirdrn.dm.clustering.common.utils.ClusteringUtils;
 import org.shirdrn.dm.clustering.common.utils.FileUtils;
 
 import com.google.common.base.Throwables;
@@ -31,17 +39,17 @@ import com.google.common.collect.Sets;
 public class EpsEstimator {
 
 	private static final Log LOG = LogFactory.getLog(EpsEstimator.class);
-	private final List<Point2D> allPoints = Lists.newArrayList();
-	private final DistanceCache distanceCache;
+	private final List<Point2D> allPoints = Lists.newArrayList();//所有的点
+	private final DistanceCache distanceCache;//距离
 	private int k = 4;
-	private int parallism = 5;
-	private final ExecutorService executorService;
+	private int parallism = 5;//并发器
+	private final ExecutorService executorService;//线程池
 	private CountDownLatch latch;
-	private final List<KDistanceCalculator> calculators = Lists.newArrayList();
+	private final List<KDistanceCalculator> calculators = Lists.newArrayList();//计算器
 	private int taskIndex = 0;
-	private int calculatorQueueSize = 200;
-	private volatile boolean completeToAssignTask = false;
-	private boolean isOutputKDsitance = true;
+	private int calculatorQueueSize = 200;//计算器队列大小
+	private volatile boolean completeToAssignTask = false;//完成分配任务
+	private boolean isOutputKDsitance = true;//是否输出K-distance
 	
 	public EpsEstimator() {
 		this(4, 5);
@@ -64,11 +72,11 @@ public class EpsEstimator {
 	public void setOutputKDsitance(boolean isOutputKDsitance) {
 		this.isOutputKDsitance = isOutputKDsitance;
 	}
-	
+	//计算K-距离
 	public EpsEstimator computeKDistance(File... files) {
-			// parse sample files
+			// 解析实例文字
 			FileUtils.read2DPointsFromFiles(allPoints, "[\t,;\\s]+", files);
-			// compute k-distance
+			// 计算K-距离
 			try {
 				for (int i = 0; i < parallism; i++) {
 					KDistanceCalculator calculator = new KDistanceCalculator(calculatorQueueSize);
@@ -83,7 +91,7 @@ public class EpsEstimator {
 					KPoint2D kp = new KPoint2D(p);
 					Collections.replaceAll(allPoints, p, kp);
 				}
-				// assign point tasks
+				// 分配点任务
 				for(int i=0; i<allPoints.size(); i++) {
 					while(true) {
 						KDistanceCalculator calculator = getCalculator();
@@ -110,7 +118,7 @@ public class EpsEstimator {
 		return this;
 	}
 	
-	public void estimateEps() {
+	public void estimateEps() throws IOException {
 		// sort k-distance s
 		Collections.sort(allPoints, new Comparator<Point2D>() {
 
@@ -128,12 +136,29 @@ public class EpsEstimator {
 		});
 		
 		if(isOutputKDsitance) {
+			String path = "E:\\JAVA Work\\Step\\src\\main\\data\\core.txt";
+	        File file =new File(path);
+	        InputStream is =new FileInputStream(file);
+	        if(!file.exists()){
+	            file.createNewFile();
+	        }
+	        FileOutputStream fos =new FileOutputStream(file);
+		        //获得输出流
+		        OutputStreamWriter bos =new OutputStreamWriter(fos);
+		        BufferedWriter bw = new BufferedWriter(bos);
+		        //遍历输出
+	        String a = "";
 			for(int i=0; i<allPoints.size(); i++) {
 				KPoint2D kp = (KPoint2D) allPoints.get(i);
 				System.out.println(i + "\t" + kp.kDistance);
+		    		a+=kp.kDistance;
+		    		a+="\r\n";
+              }
+		        bw.write(a);
+		        bw.flush();
+		        bw.close();}
 			}
-		}
-	}
+
 
 	private KDistanceCalculator getCalculator() {
 		int index = taskIndex++ % parallism;
@@ -187,8 +212,7 @@ public class EpsEstimator {
 										iter.remove();
 									}
 								}
-							}
-							
+							}						
 							// collect k-distance
 							p1.kDistance = sortedDistances.iterator().next();
 							LOG.debug("Processed, point=(" + p1 + "), k-distance=" + p1.kDistance);
@@ -250,5 +274,50 @@ public class EpsEstimator {
 	public DistanceCache getDistanceCache() {
 		return distanceCache;
 	}
-	
+	/*public static void main(String[] args) {
+		EpsEstimator epsEstimator=new EpsEstimator(4, 5);
+		File inputFile=new File(FileUtils.getDataRootDir(), "hmh.txt");
+		epsEstimator.computeKDistance(inputFile).estimateEps();
+		Iterator<Point2D> iter = epsEstimator.allPointIterator();
+		while(iter.hasNext()) {
+			Point2D p = iter.next();
+			while(!taskQueue.offer(p)) {
+				Thread.sleep(10);
+			}
+			LOG.debug("Added to taskQueue: " + p);
+		}
+		
+		// generate sorted k-distances sequences
+//		int minPts = 4;
+//		double eps = 0.0025094814205335555;
+//		double eps = 0.004417483559674606;
+//		double eps = 0.006147849217403014;
+		
+		int minPts = 8;
+//		double eps = 0.004900098978598581;
+		double eps = 0.009566439044911;
+//		double eps = 0.013621050253196359;
+		
+		DBSCANClustering c = new DBSCANClustering(minPts, 8);
+		c.setInputFiles(new File(FileUtils.getDataRootDir(), "xy_zfmx.txt"));
+		c.getEpsEstimator().setOutputKDsitance(false);
+		c.generateSortedKDistances();
+		
+		// execute clustering procedure
+		c.setEps(eps);
+		c.setMinPts(4);
+		c.clustering();
+		
+		System.out.println("== Clustered points ==");
+		ClusteringResult<Point2D> result = c.getClusteringResult();
+		ClusteringUtils.print2DClusterPoints(result.getClusteredPoints());
+		
+		// print outliers
+		int outliersClusterId = -1;
+		System.out.println("== Outliers ==");
+		for(Point2D p : c.getOutliers()) {
+			System.out.println(p.getX() + "," + p.getY() + "," + outliersClusterId);
+		}
+	}
+	*/
 }

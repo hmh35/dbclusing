@@ -15,6 +15,8 @@ import javax.swing.JButton;
 import javax.swing.JFrame;
 import javax.swing.JPanel;
 
+/*import org.jfree.data.xy.XYSeries;
+import org.jfree.data.xy.XYSeriesCollection;*/
 import org.jfree.data.xy.XYSeries;
 import org.jfree.data.xy.XYSeriesCollection;
 import org.shirdrn.dm.clustering.common.ClusterPoint2D;

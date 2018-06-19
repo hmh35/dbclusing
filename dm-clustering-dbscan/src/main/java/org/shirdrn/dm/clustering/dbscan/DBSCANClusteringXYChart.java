@@ -101,7 +101,7 @@ public class DBSCANClusteringXYChart extends JFrame implements ClusteringXYChart
 		this.add(chartPanel, BorderLayout.CENTER);
         
 		JPanel panel = new JPanel();
-		panel.setBorder(BorderFactory.createLineBorder(Color.BLACK, 1, false));
+		panel.setBorder(BorderFactory.createLineBorder(Color.BLACK, 1));
         
         // display/hide outliers
 		ChartUtils.createToggledButtons(panel, outlierXYSeries, outliers, "Display Outliers", "Hide Outliers");
@@ -133,10 +133,11 @@ public class DBSCANClusteringXYChart extends JFrame implements ClusteringXYChart
 		int minPts = 8;
 //		double eps = 0.004900098978598581;
 //		double eps = 0.009566439044911;
-		double eps = 0.013621050253196359;
+		double eps =0.000999276086690;
 		
 		String chartTitle = "DBSCAN [Eps=" + eps + ", MinPts=" + minPts + "]";
 		String dir = FileUtils.getDataRootDir().getAbsolutePath();
+		System.out.println(dir);
 		File clusterPointFile = getClusterPointFile(args, dir, minPts, eps);
 		
 		final DBSCANClusteringXYChart chart = new DBSCANClusteringXYChart(chartTitle);

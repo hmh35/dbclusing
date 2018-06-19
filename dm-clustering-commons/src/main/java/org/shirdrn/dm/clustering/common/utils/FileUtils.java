@@ -14,6 +14,8 @@ import org.shirdrn.dm.clustering.common.Point2D;
 import com.google.common.base.Throwables;
 import com.google.common.collect.Sets;
 
+import static java.lang.Integer.parseInt;
+
 public class FileUtils {
 
 	
@@ -49,7 +51,29 @@ public class FileUtils {
 			}
 		}
 	}
-	
+	public static void readKPointsFromFiles(final List<KPoint> points, String delimiterRegex, File... files) {
+		BufferedReader reader = null;
+		for(File file : files) {
+			try {
+				reader = new BufferedReader(new FileReader(file.getAbsoluteFile()));
+				String point = null;
+				while((point = reader.readLine()) != null) {
+					String[] a = point.split(delimiterRegex);
+					if(a.length == 2) {
+						KPoint kp = new KPoint(parseInt(a[0]),Double.parseDouble(a[1]));
+						if(!points.contains(kp)) {
+							points.add(kp);
+						}
+					}
+				}
+			} catch (Exception e) {
+				throw Throwables.propagate(e);
+			} finally {
+				FileUtils.closeQuietly(reader);
+			}
+		}
+	}
+
 	public static void read2DClusterPointsFromFile(final Map<Integer, Set<ClusterPoint2D>> points, 
 			final Set<ClusterPoint2D> noisePoints, String delimiterRegex, File pointFile) {
 		BufferedReader reader = null;
@@ -61,7 +85,7 @@ public class FileUtils {
 				if(!line.trim().isEmpty()) {
 					String[] a = line.split("[,;\t\\s]+");
 					if(a.length == 3) {
-						int clusterId = Integer.parseInt(a[2]);
+						int clusterId = parseInt(a[2]);
 						ClusterPoint2D clusterPoint = 
 								new ClusterPoint2D(Double.parseDouble(a[0]), Double.parseDouble(a[1]), clusterId);
 						// collect noise points
@@ -95,7 +119,7 @@ public class FileUtils {
 				if(!line.trim().isEmpty()) {
 					String[] a = line.split("[,;\t\\s]+");
 					if(a.length == 3) {
-						int clusterId = Integer.parseInt(a[2]);
+						int clusterId = parseInt(a[2]);
 						ClusterPoint2D clusterPoint = 
 								new ClusterPoint2D(Double.parseDouble(a[0]), Double.parseDouble(a[1]), clusterId);
 						Set<ClusterPoint2D> set = points.get(clusterId);
